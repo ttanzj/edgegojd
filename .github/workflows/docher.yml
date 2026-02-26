@@ -1,0 +1,44 @@
+name: Build and Push Docker Image (Personal)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# ⭐ 必须声明，否则 GHCR 会拒绝
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ 拉取代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ 登录 GitHub Container Registry
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 3️⃣ 设置镜像名称（个人命名空间）
+      - name: Set image name
+        run: |
+          echo "IMAGE_NAME=ghcr.io/${{ github.actor }}/edgegojd:latest" >> $GITHUB_ENV
+
+      # 4️⃣ 构建 Docker 镜像
+      - name: Build Docker image
+        run: |
+          docker build -t "$IMAGE_NAME" .
+
+      # 5️⃣ 推送 Docker 镜像
+      - name: Push Docker image
+        run: |
+          docker push "$IMAGE_NAME"
