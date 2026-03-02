@@ -1,20 +1,18 @@
-FROM node:20-alpine
+# 使用官方 Node 18 轻量镜像
+FROM node:18-slim
 
+# 设置工作目录
 WORKDIR /app
 
-# 安装 curl bash
-RUN apk add --no-cache curl bash
-
-# 安装 sing-box 官方二进制
-RUN curl -L https://github.com/SagerNet/sing-box/releases/latest/download/sing-box-linux-amd64.tar.gz \
-    | tar zx \
-    && mv sing-box-*/sing-box /usr/local/bin/sing-box \
-    && chmod +x /usr/local/bin/sing-box
-
-COPY package.json .
+# 拷贝 package.json 并安装依赖
+COPY package*.json ./
 RUN npm install --production
 
-COPY app.js sources.txt ./
+# 拷贝服务代码
+COPY server.js ./
 
-EXPOSE 8080
-CMD ["node", "app.js"]
+# 对外暴露端口
+EXPOSE 3000
+
+# 启动服务
+CMD ["node", "server.js"]
