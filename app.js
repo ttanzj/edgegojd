@@ -3,17 +3,14 @@ import fetch from "node-fetch";
 import fs from "fs";
 import yaml from "js-yaml";
 import crypto from "crypto";
-import { execSync } from "child_process";
 
 const app = express();
 const PORT = 8080;
 const TMP = "/tmp/sb";
 const TIMEOUT = 12000;
 
-// 自动创建临时目录
 if (!fs.existsSync(TMP)) fs.mkdirSync(TMP, { recursive: true });
 
-// 读取 sources.txt
 const SOURCES = fs.readFileSync("./sources.txt", "utf8")
   .split("\n")
   .map(l => l.trim())
@@ -23,7 +20,6 @@ function md5(s) {
   return crypto.createHash("md5").update(s).digest("hex");
 }
 
-// 拉取源文件
 async function fetchText(url) {
   try {
     const r = await fetch(url, { timeout: TIMEOUT });
@@ -34,24 +30,19 @@ async function fetchText(url) {
   }
 }
 
-// ---------- 解析不同格式 ----------
-
-// Base64 或 URI 直接行
+// 解析单行 URI 或 Base64
 function parseURI(text) {
   if (!text) return [];
   try { text = Buffer.from(text, "base64").toString("utf8"); } catch {}
-  return text
-    .split(/\r?\n/)
-    .filter(l => l.match(/^(vmess|vless|trojan|ss|hysteria2?|naive\+https):\/\//));
+  return text.split(/\r?\n/).filter(l => l.match(/^(vmess|vless|trojan|ss|hysteria2?|naive\+https):\/\//));
 }
 
-// Clash / Meta YAML
+// Clash/Meta YAML
 function parseClash(text) {
   const out = [];
   let doc;
   try { doc = yaml.load(text); } catch { return out; }
   if (!doc?.proxies) return out;
-
   for (const p of doc.proxies) {
     switch(p.type) {
       case "vmess":
@@ -77,12 +68,15 @@ function parseClash(text) {
       case "hysteria2":
         out.push(`${p.type}://${p.password || ""}@${p.server}:${p.port}?insecure=1#${encodeURIComponent(p.name)}`);
         break;
+      case "naive+https":
+        out.push(`naive+https://${p.user || "user"}@${p.server}:${p.port}#${encodeURIComponent(p.name)}`);
+        break;
     }
   }
   return out;
 }
 
-// sing-box / xray JSON → outbounds
+// sing-box / xray JSON
 function parseJson(text) {
   const out = [];
   let j;
@@ -117,33 +111,26 @@ function parseJson(text) {
   return out;
 }
 
-// ---------- 主接口 ----------
 app.get("/", (_, res) => {
   res.send("OK\nUse /sub to get subscription");
 });
 
 app.get("/sub", async (_, res) => {
   const all = new Map();
-  let idx = 0;
 
-  await Promise.all(
-    SOURCES.map(async url => {
-      const raw = await fetchText(url);
-      if (!raw || raw.length < 50) return;
+  await Promise.all(SOURCES.map(async url => {
+    const raw = await fetchText(url);
+    if (!raw || raw.length < 50) return;
 
-      // 解析各类格式
-      const uris = [
-        ...parseURI(raw),
-        ...parseClash(raw),
-        ...parseJson(raw)
-      ];
+    const uris = [
+      ...parseURI(raw),
+      ...parseClash(raw),
+      ...parseJson(raw)
+    ];
 
-      // 去重
-      for (const u of uris) all.set(md5(u), u);
-    })
-  );
+    for (const u of uris) all.set(md5(u), u);
+  }));
 
-  // 输出 Base64
   const final = Buffer.from([...all.values()].join("\n")).toString("base64");
   res.type("text/plain").send(final);
 });
