@@ -1,17 +1,12 @@
-
 FROM node:20-alpine
 
 WORKDIR /app
 
-# 安装依赖
-COPY package.json .
+COPY package.json ./
 RUN npm install --production
 
-# 复制主程序
-COPY index.js .
+COPY app.js sources.txt ./
 
-# 对外端口
-EXPOSE 3000
+EXPOSE 8080
 
-# 启动
-CMD ["node", "index.js"]
+CMD ["node", "app.js"]
