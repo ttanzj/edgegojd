@@ -1,8 +1,8 @@
 {
+  "name": "singbox-sub",
   "type": "module",
   "dependencies": {
     "express": "^4.19.2",
-    "node-fetch": "^3.3.2",
-    "js-yaml": "^4.1.0"
+    "node-fetch": "^3.3.2"
   }
 }
