@@ -1,138 +1,164 @@
-import express from "express";
-import fetch from "node-fetch";
-import fs from "fs";
-import yaml from "js-yaml";
-import crypto from "crypto";
+import express from 'express'
+import fetch from 'node-fetch'
+import yaml from 'js-yaml'
 
-const app = express();
-const PORT = 8080;
-const TMP = "/tmp/sb";
-const TIMEOUT = 12000;
+const app = express()
+const PORT = process.env.PORT || 3000
 
-if (!fs.existsSync(TMP)) fs.mkdirSync(TMP, { recursive: true });
-
-const SOURCES = fs.readFileSync("./sources.txt", "utf8")
-  .split("\n")
-  .map(l => l.trim())
-  .filter(Boolean);
-
-function md5(s) {
-  return crypto.createHash("md5").update(s).digest("hex");
-}
-
-async function fetchText(url) {
+app.get('/sub', async (req, res) => {
   try {
-    const r = await fetch(url, { timeout: TIMEOUT });
-    if (!r.ok) return "";
-    return await r.text();
-  } catch {
-    return "";
+    const uniqueStrings = new Set()
+
+    const sites = [
+      // =================== hysteria ===================
+      { url: "https://www.gitlabip.xyz/Alvin9999/pac2/master/hysteria/1/config.json", type: "hysteria" },
+      { url: "https://gitlab.com/free9999/ipupdate/-/raw/master/hysteria/config.json", type: "hysteria" },
+      { url: "https://www.githubip.xyz/Alvin9999/pac2/master/hysteria/config.json", type: "hysteria" },
+      { url: "https://fastly.jsdelivr.net/gh/Alvin9999/pac2@latest/hysteria/config.json", type: "hysteria" },
+      { url: "https://www.gitlabip.xyz/Alvin9999/pac2/master/hysteria/13/config.json", type: "hysteria" },
+      { url: "https://gitlab.com/free9999/ipupdate/-/raw/master/hysteria/2/config.json", type: "hysteria" },
+      { url: "https://www.githubip.xyz/Alvin9999/pac2/master/hysteria/2/config.json", type: "hysteria" },
+      { url: "https://fastly.jsdelivr.net/gh/Alvin9999/pac2@latest/hysteria/2/config.json", type: "hysteria" },
+
+      // =================== hysteria2 ===================
+      { url: 'https://www.gitlabip.xyz/Alvin9999/pac2/master/hysteria2/1/config.json', type: "hysteria2" },
+      { url: 'https://gitlab.com/free9999/ipupdate/-/raw/master/hysteria2/config.json', type: "hysteria2" },
+      { url: 'https://www.githubip.xyz/Alvin9999/pac2/master/hysteria2/config.json', type: "hysteria2" },
+      { url: 'https://fastly.jsdelivr.net/gh/Alvin9999/pac2@latest/hysteria2/config.json', type: "hysteria2" },
+      { url: 'https://www.gitlabip.xyz/Alvin9999/pac2/master/hysteria2/13/config.json', type: "hysteria2" },
+      { url: 'https://gitlab.com/free9999/ipupdate/-/raw/master/hysteria2/2/config.json', type: "hysteria2" },
+      { url: 'https://www.githubip.xyz/Alvin9999/pac2/master/hysteria2/2/config.json', type: "hysteria2" },
+      { url: 'https://fastly.jsdelivr.net/gh/Alvin9999/pac2@latest/hysteria2/2/config.json', type: "hysteria2" },
+
+      // =================== xray ===================
+      { url: 'https://www.gitlabip.xyz/Alvin9999/pac2/master/xray/1/config.json', type: "xray" },
+      { url: 'https://gitlab.com/free9999/ipupdate/-/raw/master/xray/config.json', type: "xray" },
+      { url: 'https://www.githubip.xyz/Alvin9999/pac2/master/xray/config.json', type: "xray" },
+      { url: 'https://fastly.jsdelivr.net/gh/Alvin9999/pac2@latest/xray/config.json', type: "xray" },
+      { url: 'https://www.gitlabip.xyz/Alvin9999/pac2/master/xray/3/config.json', type: "xray" },
+      { url: 'https://gitlab.com/free9999/ipupdate/-/raw/master/xray/2/config.json', type: "xray" },
+      { url: 'https://www.githubip.xyz/Alvin9999/pac2/master/xray/2/config.json', type: "xray" },
+
+      // =================== singbox ===================
+      { url: "https://gitlab.com/free9999/ipupdate/-/raw/master/singbox/config.json", type: "singbox" },
+      { url: "https://www.githubip.xyz/Alvin9999/pac2/master/singbox/config.json", type: "singbox" },
+      { url: "https://fastly.jsdelivr.net/gh/Alvin9999/pac2@latest/singbox/config.json", type: "singbox" },
+      { url: "https://www.gitlabip.xyz/Alvin9999/pac2/master/singbox/1/config.json", type: "singbox" },
+
+      // =================== clash ===================
+      { url: "https://gitlab.com/free9999/ipupdate/-/raw/master/clash.meta2/config.yaml", type: "clash" },
+      { url: "https://www.githubip.xyz/Alvin9999/pac2/master/clash.meta2/config.yaml", type: "clash" },
+      { url: "https://fastly.jsdelivr.net/gh/Alvin9999/pac2@latest/clash.meta2/config.yaml", type: "clash" },
+      { url: "https://www.gitlabip.xyz/Alvin9999/pac2/master/clash.meta2/13/config.yaml", type: "clash" },
+      { url: "https://gitlab.com/free9999/ipupdate/-/raw/master/clash.meta2/2/config.yaml", type: "clash" },
+      { url: "https://www.githubip.xyz/Alvin9999/pac2/master/clash.meta2/2/config.yaml", type: "clash" },
+      { url: "https://fastly.jsdelivr.net/gh/Alvin9999/pac2@latest/clash.meta2/2/config.yaml", type: "clash" },
+
+      // =================== naive ===================
+      { url: "https://www.gitlabip.xyz/Alvin9999/PAC/master/naiveproxy/1/config.json", type: "naive" },
+      { url: "https://gitlab.com/free9999/ipupdate/-/raw/master/naiveproxy/config.json", type: "naive" },
+      { url: "https://www.githubip.xyz/Alvin9999/PAC/master/naiveproxy/config.json", type: "naive" },
+      { url: "https://fastly.jsdelivr.net/gh/Alvin9999/PAC@latest/naiveproxy/config.json", type: "naive" },
+    ]
+
+    await Promise.all(sites.map(site => fetchData(site, uniqueStrings)))
+
+    const mergedContent = Array.from(uniqueStrings).join('\n')
+    const base64Str = Buffer.from(mergedContent, 'utf-8').toString('base64')
+
+    res.setHeader('Content-Type', 'text/plain')
+    res.send(base64Str)
+
+  } catch (err) {
+    console.error(err)
+    res.status(500).send('Internal Server Error')
   }
-}
+})
 
-// 解析单行 URI 或 Base64
-function parseURI(text) {
-  if (!text) return [];
-  try { text = Buffer.from(text, "base64").toString("utf8"); } catch {}
-  return text.split(/\r?\n/).filter(l => l.match(/^(vmess|vless|trojan|ss|hysteria2?|naive\+https):\/\//));
-}
+app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}/sub`))
 
-// Clash/Meta YAML
-function parseClash(text) {
-  const out = [];
-  let doc;
-  try { doc = yaml.load(text); } catch { return out; }
-  if (!doc?.proxies) return out;
-  for (const p of doc.proxies) {
-    switch(p.type) {
-      case "vmess":
-        out.push("vmess://" + Buffer.from(JSON.stringify({
-          v:"2", ps:p.name, add:p.server, port:p.port, id:p.uuid,
-          aid:"0", net:p.network||"tcp",
-          path:p["ws-opts"]?.path||"/",
-          host:p["ws-opts"]?.headers?.Host||"",
-          tls:p.tls? "tls":""
-        })).toString("base64"));
-        break;
-      case "vless":
-        out.push(`vless://${p.uuid}@${p.server}:${p.port}?encryption=none#${encodeURIComponent(p.name)}`);
-        break;
-      case "trojan":
-        out.push(`trojan://${p.password}@${p.server}:${p.port}#${encodeURIComponent(p.name)}`);
-        break;
-      case "ss":
-        const user = Buffer.from(`${p.cipher}:${p.password}`).toString("base64");
-        out.push(`ss://${user}@${p.server}:${p.port}#${encodeURIComponent(p.name)}`);
-        break;
-      case "hysteria":
-      case "hysteria2":
-        out.push(`${p.type}://${p.password || ""}@${p.server}:${p.port}?insecure=1#${encodeURIComponent(p.name)}`);
-        break;
-      case "naive+https":
-        out.push(`naive+https://${p.user || "user"}@${p.server}:${p.port}#${encodeURIComponent(p.name)}`);
-        break;
+/***************** Helper Functions *****************/
+
+async function fetchData(site, set) {
+  try {
+    const res = await fetch(site.url)
+    if (!res.ok) return
+
+    if (site.type === 'clash') {
+      const text = await res.text()
+      const data = yaml.load(text)
+      processClash(data, set)
+    } else {
+      const data = await res.json()
+      switch(site.type){
+        case 'hysteria': processHysteria(data,set); break
+        case 'hysteria2': processHysteria2(data,set); break
+        case 'xray': processXray(data,set); break
+        case 'singbox': processSingbox(data,set); break
+        case 'naive': processNaive(data,set); break
+      }
     }
+  } catch (err) {
+    console.error(`Error fetching ${site.url}:`, err.message)
   }
-  return out;
 }
 
-// sing-box / xray JSON
-function parseJson(text) {
-  const out = [];
-  let j;
-  try { j = JSON.parse(text); } catch { return out; }
-  const list = j.outbounds || [];
-  for (const o of list) {
-    switch(o.type) {
-      case "vmess":
-        out.push("vmess://" + Buffer.from(JSON.stringify({
-          v:"2", ps:o.tag, add:o.server, port:o.server_port,
-          id:o.uuid, aid:"0",
-          net:o.transport?.type || "tcp",
-          path:o.transport?.path||"/",
-          tls:o.tls?"tls":""
-        })).toString("base64"));
-        break;
-      case "vless":
-        out.push(`vless://${o.uuid}@${o.server}:${o.server_port}?encryption=none#${encodeURIComponent(o.tag)}`);
-        break;
-      case "trojan":
-        out.push(`trojan://${o.password}@${o.server}:${o.server_port}#${encodeURIComponent(o.tag)}`);
-        break;
-      case "hysteria":
-      case "hysteria2":
-        out.push(`${o.type}://${o.password || ""}@${o.server}:${o.server_port}?insecure=1#${encodeURIComponent(o.tag)}`);
-        break;
-      case "naive+https":
-        out.push(`naive+https://${o.user || "user"}@${o.server}:${o.port}#${encodeURIComponent(o.tag)}`);
-        break;
+// 以下处理函数保留最初 Worker 逻辑
+function processHysteria(data,set){
+  const s = `hysteria://${data.server}?upmbps=${data.up_mbps}&downmbps=${data.down_mbps}&auth=${data.auth_str}&insecure=1&peer=${data.server_name}&alpn=${data.alpn}`
+  set.add(s)
+}
+function processHysteria2(data,set){
+  const insecure = data.tls?.insecure ? 1 : 0
+  const s = `hysteria2://${data.auth}@${data.server}?insecure=${insecure}&sni=${data.tls?.sni||''}`
+  set.add(s)
+}
+function processXray(data,set){
+  const out = data.outbounds[0]
+  const proto = out.protocol
+  const id = out.settings?.vnext?.[0]?.users?.[0]?.id
+  const addr = out.settings?.vnext?.[0]?.address
+  const port = out.settings?.vnext?.[0]?.port
+  const security = out.streamSettings?.security||''
+  const sni = out.streamSettings?.tlsSettings?.serverName||''
+  const fp = out.streamSettings?.tlsSettings?.fingerprint||'chrome'
+  const net = out.streamSettings?.network
+  const path = out.streamSettings?.wsSettings?.path
+  const host = out.streamSettings?.wsSettings?.headers?.Host
+  const s = `${proto}://${id}@${addr}:${port}?security=${security}&sni=${sni}&fp=${fp}&type=${net}&path=${path}&host=${host}`
+  set.add(s)
+}
+function processSingbox(data,set){
+  const out = data.outbounds[0]
+  const s = `hysteria://${out.server}:${out.server_port}?upmbps=${out.up_mbps}&downmbps=${out.down_mbps}&auth=${out.auth_str}&insecure=1&peer=${out.tls.server_name}&alpn=${out.tls.alpn[0]}`
+  set.add(s)
+}
+function processNaive(data,set){
+  set.add(Buffer.from(data.proxy,'utf-8').toString('base64'))
+}
+function processClash(data,set){
+  if(!data.proxies) return
+  data.proxies.forEach(proxy=>{
+    let s=''
+    switch(proxy.type){
+      case 'hysteria':
+        s = `hysteria://${proxy.server}:${proxy.port}?peer=${proxy.sni}&upmbps=${proxy.up}&downmbps=${proxy.down}&auth=${proxy['auth-str']}&obfs=${proxy.obfs}&mport=${proxy.port}&protocol=${proxy.protocol}&fastopen=${proxy.fast_open}&insecure=1&alpn=${proxy.alpn[0]}`
+        break
+      case 'vless':
+        s = `vless://${proxy.uuid}@${proxy.server}:${proxy.port}?security=${proxy.tls?'tls':'none'}&type=${proxy.network}`
+        break
+      case 'vmess':
+        s = `vmess://${proxy.uuid}@${proxy.server}:${proxy.port}?security=${proxy.tls?'tls':'none'}&type=${proxy.network}`
+        break
+      case 'ss':
+        const ss = Buffer.from(`${proxy.cipher}:${proxy.password}`).toString('base64')
+        s = `ss://${ss}@${proxy.server}:${proxy.port}`
+        break
+      case 'ssr':
+        const ssr = Buffer.from(`${proxy.server}:${proxy.port}:${proxy.protocol}:${proxy.cipher}:${proxy.obfs}:${proxy.password}`).toString('base64')
+        s = `ssr://${ssr}`
+        break
     }
-  }
-  return out;
+    if(s) set.add(s)
+  })
 }
-
-app.get("/", (_, res) => {
-  res.send("OK\nUse /sub to get subscription");
-});
-
-app.get("/sub", async (_, res) => {
-  const all = new Map();
-
-  await Promise.all(SOURCES.map(async url => {
-    const raw = await fetchText(url);
-    if (!raw || raw.length < 50) return;
-
-    const uris = [
-      ...parseURI(raw),
-      ...parseClash(raw),
-      ...parseJson(raw)
-    ];
-
-    for (const u of uris) all.set(md5(u), u);
-  }));
-
-  const final = Buffer.from([...all.values()].join("\n")).toString("base64");
-  res.type("text/plain").send(final);
-});
-
-app.listen(PORT, "0.0.0.0", () => console.log("sing-box subscription running on port", PORT));
