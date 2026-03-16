@@ -35,8 +35,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/chrogojd:latest
-            ghcr.io/${{ github.repository_owner }}/chrogojd:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/edgegojd:latest
+            ghcr.io/${{ github.repository_owner }}/edgegojd:${{ github.sha }}
           # platforms: linux/amd64,linux/arm64  # 如果需要多架构支持，取消注释
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -47,19 +47,18 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
 
     permissions:
-      packages: write
+      packages: write  # 实际删除权限靠下面的 PAT
 
     steps:
       - name: Keep recent 5 tagged + all within 14 days
         uses: snok/container-retention-policy@v3
         with:
-          account: user                     # 如果是组织仓库，改成 organization
-          # org-name: your-org-name         # 组织仓库时需要，加在这里
-          token: ${{ secrets.GITHUB_TOKEN }}  # 建议替换为 PAT（见下方说明）
-          image-names: chrogojd
+          account: user
+          token: ${{ secrets.GHCR_TOKEN }}          # 使用有 delete:packages 的 PAT
+          image-names: edgegojd                     # ← 这里改成新 package 名
           cut-off: 14 days ago
           keep-n-most-recent: 5
           timestamp-to-use: created_at
           tag-selection: both
-          dry-run: true                     # 第一次运行建议保持 true，确认逻辑后再改 false
+          dry-run: true                             # 先保持 true 测试，确认后改 false
           rust-log: debug
