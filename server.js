@@ -17,10 +17,25 @@ async function getCountryCode(server) {
     return countryCache.get(server);
   }
 
+  // 跳过明显内网地址
+  if (
+    !server ||
+    server.startsWith('127.') ||
+    server.startsWith('10.') ||
+    server.startsWith('192.168.') ||
+    server === 'localhost' ||
+    server.includes('local')
+  ) {
+    countryCache.set(server, 'LAN');
+    return 'LAN';
+  }
+
   try {
-    const res = await axios.get(`https://api.country.is/${server}`, { timeout: 4000 });
-    const data = res.data;
-    const code = data.country || '??';
+    // 使用 ip-api.com（免费、无需 token、稳定、对 IPv6 支持好）
+    const res = await axios.get(`http://ip-api.com/json/${server}?fields=countryCode`, {
+      timeout: 3500,
+    });
+    const code = res.data.countryCode || '??';
     countryCache.set(server, code);
     return code;
   } catch (err) {
@@ -75,24 +90,24 @@ async function updateCache() {
   const proxyObjects = [];
   const proxyNames = [];
 
+  // ==================== 国旗 emoji 映射（可自行扩展） ====================
+  const FLAG_EMOJI = {
+    US: '🇺🇸', CA: '🇨🇦', GB: '🇬🇧', JP: '🇯🇵', KR: '🇰🇷', SG: '🇸🇬',
+    HK: '🇭🇰', TW: '🇹🇼', DE: '🇩🇪', FR: '🇫🇷', NL: '🇳🇱', RU: '🇷🇺',
+    LAN: '🏠', '??': '❓'
+  };
+
   for (let i = 0; i < proxyStrs.length; i++) {
     const obj = JSON.parse(proxyStrs[i]);
     const isIPv6 = obj.server && obj.server.includes(':') && !obj.server.match(/^\d+\.\d+\.\d+\.\d+$/);
     
-    // ──────────────── 修改的部分开始 ────────────────
     const country = await getCountryCode(obj.server);
-    let name = obj.server || '未知';
-    if (isIPv6) name = `[${name}]`;
+    const flag = FLAG_EMOJI[country] || '🌐';
+
+    let name = `${flag} ${country} · ${obj.server || '未知'}`;
+    if (isIPv6) name = `${flag} ${country} · [${obj.server}]`;
     if (obj.portRange) name += ` :${obj.portRange}`;
     if (obj.sni && obj.sni !== obj.server) name += ` (${obj.sni})`;
-
-    // 在最前面加上国家代码（如果查到）
-    if (country && country !== '??') {
-      name = `${country} - ${name}`;
-    } else {
-      name = `?? - ${name}`;
-    }
-    // ──────────────── 修改的部分结束 ────────────────
 
     obj.name = name.trim();
     proxyObjects.push(obj);
@@ -142,53 +157,9 @@ async function updateCache() {
     cachedBase64 = '';
     console.log('⚠️ 没有可转换为 base64 的节点');
   }
-
-  await uploadToGitHub(cachedYaml, 'clash-cache.yaml', '🤖 自动更新 Clash YAML 缓存');
-  await uploadToGitHub(cachedBase64, 'base64.txt', '🤖 自动更新 Base64 订阅');
 }
 
-async function uploadToGitHub(content, filePath, commitMessagePrefix) {
-  const {
-    GITHUB_TOKEN,
-    GITHUB_REPO = 'ttanzj/chrogojd',
-    GITHUB_BRANCH = 'main'
-  } = process.env;
-
-  if (!GITHUB_TOKEN) {
-    console.log(`⚠️ 未设置 GITHUB_TOKEN，跳过上传 ${filePath}`);
-    return;
-  }
-
-  const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${filePath}`;
-  const headers = { Authorization: `token ${GITHUB_TOKEN}` };
-  const encodedContent = Buffer.from(content).toString('base64');
-
-  try {
-    let sha = null;
-    try {
-      const getRes = await axios.get(`${url}?ref=${GITHUB_BRANCH}`, { headers });
-      sha = getRes.data.sha;
-    } catch (err) {
-      if (err.response?.status !== 404) throw err;
-      console.log(`📁 文件 ${filePath} 不存在，将首次创建`);
-    }
-
-    await axios.put(
-      url,
-      {
-        message: `${commitMessagePrefix} - ${new Date().toISOString()}`,
-        content: encodedContent,
-        sha: sha,
-        branch: GITHUB_BRANCH
-      },
-      { headers }
-    );
-
-    console.log(`✅ 已上传到 GitHub → ${GITHUB_REPO}/${filePath}`);
-  } catch (err) {
-    console.error(`❌ 上传 ${filePath} 失败:`, err.response?.data?.message || err.message);
-  }
-}
+// ======================== 以下所有函数保持原样 ========================
 
 function parseServerPort(serverStr, defaultPort = 443) {
   if (!serverStr) return { server: '', port: defaultPort, portRange: null };
@@ -501,7 +472,7 @@ function processClash(data, set, base64Links) {
           type: 'none',
           host: p['ws-opts']?.headers?.Host || p.servername || '',
           path: p['ws-opts']?.path || '',
-          tls: p.tls ? 'tls' : '',
+          tls: p。tls ? 'tls' : '',
           sni: p.servername || ''
         };
         const encoded = Buffer.from(JSON.stringify(vmessObj)).toString('base64');
@@ -541,6 +512,8 @@ function processClash(data, set, base64Links) {
   }
 }
 
+// ======================== 路由 ========================
+
 app.get('/', async (req, res) => {
   if (cachedYaml.includes('初始化')) await updateCache();
   res.setHeader('Content-Type', 'text/yaml; charset=utf-8');
@@ -552,8 +525,13 @@ app.get('/base64', (req, res) => {
   res.send(cachedBase64 || '没有可用 base64 订阅');
 });
 
+// ======================== 启动 ========================
+
 app.listen(3000, async () => {
-  console.log('🚀 chrogojd 服务已启动 - 端口 3000');
+  console.log('🚀 服务已启动 - 端口 3000');
+  console.log('Claw Cloud 部署提示：');
+  console.log('   订阅地址直接填 → https://你的项目名.run.claw.cloud/');
+  console.log('   base64 订阅地址 → https://你的项目名.run.claw.cloud/base64');
   await updateCache();
-  cron.schedule('0 0 * * *', updateCache);
+  cron.schedule('0 0 * * *', updateCache);   // 每天 UTC 0 点更新（北京时间可改成 '0 16 * * *'）
 });
