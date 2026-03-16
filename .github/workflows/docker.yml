@@ -1,0 +1,65 @@
+name: Docker Build & Push to GHCR + Cleanup
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push multi-platform
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/chrogojd:latest
+            ghcr.io/${{ github.repository_owner }}/chrogojd:${{ github.sha }}
+          # platforms: linux/amd64,linux/arm64  # 如果需要多架构支持，取消注释
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+
+    permissions:
+      packages: write
+
+    steps:
+      - name: Keep recent 5 tagged + all within 14 days
+        uses: snok/container-retention-policy@v3
+        with:
+          account: user                     # 如果是组织仓库，改成 organization
+          # org-name: your-org-name         # 组织仓库时需要，加在这里
+          token: ${{ secrets.GITHUB_TOKEN }}  # 建议替换为 PAT（见下方说明）
+          image-names: chrogojd
+          cut-off: 14 days ago
+          keep-n-most-recent: 5
+          timestamp-to-use: created_at
+          tag-selection: both
+          dry-run: true                     # 第一次运行建议保持 true，确认逻辑后再改 false
+          rust-log: debug
