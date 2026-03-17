@@ -11,7 +11,7 @@ Clash 全节点自动聚合服务（支持 Hysteria / Hysteria2 / Xray / Singbox
 ## 部署方式（ClawCloud）
 
 1. 在 GitHub 创建仓库 `edgegojd`，把上面所有文件 push 上去。
-2. GitHub Action 会自动构建并推送镜像 `ghcr.io/你的用户名/edgegojd:latest`。
+2. GitHub Action 会自动构建并推送镜像 `ghcr.io/你的用户名/edgegojd:last或latest`。
 3. 在 ClawCloud 新建容器：
    - 镜像地址：`ghcr.io/你的用户名/edgegojd:latest`
    - 端口映射：`3000`（容器端口）→ 你想要的宿主机端口（推荐 8080）
