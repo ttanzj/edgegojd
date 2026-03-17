@@ -33,6 +33,7 @@ base64 订阅地址 → https://你的项目名.run.claw.cloud/base64
 - server.js可以输出yaml和base64格式，server.js-back是只yaml格式
 - subscriptions.json是整合新版和旧版chromego后的地址，subscriptions.json-是旧版地址，两版都未去除失效链接
 - base64订阅大量重复，去重后节点比yaml少
+- clawlcoud部署在美国东区会长时间地址不启用，可部署到日本区
 
 
 所有镜像地址：https://github.com/你的用户名?tab=packages
