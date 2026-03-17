@@ -472,7 +472,7 @@ function processClash(data, set, base64Links) {
           type: 'none',
           host: p['ws-opts']?.headers?.Host || p.servername || '',
           path: p['ws-opts']?.path || '',
-          tls: p。tls ? 'tls' : '',
+          tls: p.tls ? 'tls' : '',
           sni: p.servername || ''
         };
         const encoded = Buffer.from(JSON.stringify(vmessObj)).toString('base64');
