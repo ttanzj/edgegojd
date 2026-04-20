@@ -1,8 +1,8 @@
 name: 🧹 Cleanup GHCR Images - Keep Latest 5
 
 on:
-  workflow_dispatch:          # 手动触发
-  push:                       # 代码推送时触发（可改成只触发 main 分支）
+  workflow_dispatch:           # 手动触发
+  push:                        # 代码有更改时触发
     branches: [ main, master ]
 
 jobs:
@@ -12,24 +12,21 @@ jobs:
       packages: write
 
     steps:
-      - name: 🧹 清理 edgegojd 镜像（保留最近 5 个）
+      - name: 🧹 保留最近 5 个 edgegojd 镜像
         uses: snok/container-retention-policy@v3.0.1
         with:
           account: ${{ github.repository_owner }}
           token: ${{ secrets.GITHUB_TOKEN }}
           
-          image-names: edgegojd                    # ← 你的镜像名称
+          image-names: edgegojd                    # ← 修改成你的镜像名称
           
-          # 核心策略：
-          keep-at-least: 5                         # 至少保留 5 个最新镜像（不够5个时不删除）
-          cut-off: 3650d                           # 超长时间，实际按“最新5个”逻辑清理
+          keep-n-most-recent: 5                    # 保留最近 5 个镜像（核心参数）
+          cut-off: 3650d                           # 非常长的天数，确保主要按数量清理
           
-          # 只有超过一定数量时才真正清理（推荐搭配）
-          filter-tagged: false
-          filter-untagged: false
-          dry-run: false                           # 第一次测试时改为 true（只看不删）
+          tag-selection: both                      # 处理有 tag 和无 tag 的镜像
+          dry-run: false                           # 第一次测试时请改为 true
 
-      - name: ✅ 清理完成
+      - name: ✅ 清理完成提示
         run: |
-          echo "🎉 镜像清理完成！"
-          echo "策略：保留最近 5 个镜像（少于5个时不删除）"
+          echo "🎉 镜像清理任务完成！"
+          echo "策略：始终保留最近 5 个镜像（少于5个时不删除任何镜像）"
