@@ -3,7 +3,7 @@
 Clash 全节点自动聚合服务（支持 Hysteria / Hysteria2 / Xray / Singbox / Clash 多种格式）
 
 ## 功能
-- 保留全部原始订阅地址（`subscriptions.json` 可自由修改）
+- 保留全部原始订阅地址（`sources.txt` 可自由修改）
 - 自动去重 + 失效地址自动跳过
 - 每天 00:00 UTC 自动更新节点缓存
 - 访问即返回完整 Clash YAML（可直接导入）
