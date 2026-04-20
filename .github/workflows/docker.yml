@@ -1,46 +1,65 @@
-name: 🧹 Cleanup GHCR Images - Keep Latest 5
+name: 🚀 Build & Push + Cleanup GHCR
 
 on:
-  workflow_dispatch:           # 手动触发
-  push:                        # 代码推送时触发
+  push:
     branches: [ main, master ]
+  workflow_dispatch:        # 支持手动触发
 
 jobs:
-  cleanup:
+  build-and-cleanup:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       packages: write
 
     steps:
-      - name: 🧹 保留最近 5 个 edgegojd 镜像
+      - name: 📥 Checkout 代码
+        uses: actions/checkout@v4
+
+      - name: 🐳 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔑 登录 GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏗️ 构建并推送 Docker 镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
+            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 🧹 清理旧镜像（保留最近 5 个）
         run: |
-          echo "🔍 开始清理镜像..."
+          IMAGE_NAME="${{ github.event.repository.name }}"
+          echo "🔍 开始清理镜像: $IMAGE_NAME"
           
-          # 获取所有 edgegojd 镜像版本（按更新时间倒序）
-          VERSIONS=$(gh api -H "Accept: application/vnd.github.v3+json" \
-            /user/packages/container/edgegojd/versions \
+          # 获取所有版本，按更新时间倒序
+          VERSIONS=$(gh api /user/packages/container/$IMAGE_NAME/versions \
             --jq 'sort_by(.updated_at) | reverse | .[].id')
           
           COUNT=$(echo "$VERSIONS" | wc -w)
           echo "当前共有 $COUNT 个镜像版本"
           
           if [ "$COUNT" -le 5 ]; then
-            echo "✅ 镜像数量 ≤ 5 个，不进行删除"
+            echo "✅ 镜像数量 ≤ 5 个，跳过清理"
           else
             echo "🗑️  发现 $COUNT 个版本，开始删除旧镜像..."
-            
-            # 只保留最新的 5 个，删除其余的
             TO_DELETE=$(echo "$VERSIONS" | tail -n +6)
             
             for ID in $TO_DELETE; do
               echo "删除版本 ID: $ID"
-              gh api --method DELETE /user/packages/container/edgegojd/versions/$ID || true
+              gh api --method DELETE /user/packages/container/$IMAGE_NAME/versions/$ID || true
             done
-            
-            echo "✅ 清理完成！当前保留最新 5 个镜像"
+            echo "✅ 清理完成！已保留最新 5 个镜像"
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: ✅ 任务完成
-        run: echo "🎉 GHCR 镜像清理流程执行完毕（保留最近 5 个）"
