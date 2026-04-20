@@ -36,7 +36,7 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/edgegojd:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/edgegojd:last
+            ghcr.io/${{ github.repository_owner }}/edgegojd:latest
           # platforms: linux/amd64,linux/arm64  # 如果需要多架构支持，取消注释
           cache-from: type=gha
           cache-to: type=gha,mode=max
