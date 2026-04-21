@@ -14,7 +14,7 @@ Clash 全节点自动聚合服务（支持 Hysteria / Hysteria2 / Xray / Singbox
 2. GitHub Action 会自动构建并推送镜像 `ghcr.io/你的用户名/edgegojd:last或latest`。
 3. 在 ClawCloud 新建容器：
    - 镜像地址：`ghcr.io/你的用户名/edgegojd:latest`
-   - 端口映射：`3000`（容器端口）→ 你想要的宿主机端口（推荐 8080）
+   - 端口映射：`3000`（容器端口）
 4. 启动后访问：
 
 ## 访问地址  
@@ -28,7 +28,6 @@ base64 订阅地址 → https://你的项目名.run.claw.cloud/base64
 
 ## 注意
 - 容器内部监听 **3000** 端口
-- 推荐 ClawCloud 端口映射为 8080 或 80
 - 第一次访问会立即抓取，之后使用缓存，速度极快
 - server.js可以输出yaml和base64格式，server.js-back是只yaml格式
 - subscriptions.json是整合新版和旧版chromego后的地址，subscriptions.json-是旧版地址，两版都未去除失效链接
